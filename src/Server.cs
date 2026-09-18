@@ -6,54 +6,80 @@ namespace MediaRatingsPlatform
 {
   internal class Server
   {
+    readonly Router router;
+    readonly HttpListener listener;
+
     public Server()
     {
-      HttpListener listener = new();
+      listener = new();
+      router = new();
       listener.Prefixes.Add("http://localhost:8080/");
-      listener.Start();
 
-      Console.WriteLine("Starting server...");
+      ConfigureRoutes();
+    }
+
+    private void ConfigureRoutes()
+    {
+      router.AddRoute("GET", "/api/users/1/profile", async (context, parameters) =>
+      {
+        context.Response.StatusCode = 200;
+        context.Response.ContentType = "text/plain";
+
+        StreamWriter writer = new(context.Response.OutputStream);
+        await writer.WriteAsync("User profile");
+        Console.WriteLine("User profile");
+
+        context.Response.Close();
+      });
+    }
+
+    public async Task RunAsync()
+    {
+      listener.Start();
 
       while (true)
       {
-        HttpListenerContext context = listener.GetContext();
+        HttpListenerContext context = await listener.GetContextAsync();
 
-        if (context.Request.Url == null)
+        _ = HandleRequestAsync(context);
+
+        // if (context.Request.Url?.AbsolutePath == "/")
+        // {
+        //   string response_string = "Hello root";
+        //   byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response_string);
+        //
+        //   context.Response.ContentLength64 = buffer.Length;
+        //   context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+        // }
+        //
+        // if (context.Request.Url?.AbsolutePath == "/json")
+        // {
+        //   string file_data = File.ReadAllText("./test_data.json");
+        //   file_data = Regex.Replace(file_data, @"\s+", " ");
+        //   byte[] buffer = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(file_data));
+        //
+        //   context.Response.ContentLength64 = buffer.Length;
+        //   context.Response.ContentType = "Application/Json";
+        //   context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+        // }
+      }
+    }
+
+    private async Task HandleRequestAsync(HttpListenerContext context)
+    {
+      try
+      {
+        await router.RunAsync(context);
+      }
+      catch (Exception e)
+      {
+        Console.WriteLine(e);
+
+        if (context.Response.OutputStream.CanWrite)
         {
-          return;
+          context.Response.StatusCode = 500;
+          context.Response.Close();
         }
-
-        string[] steps = context.Request.Url.AbsolutePath.Split("/");
-        steps = [.. steps.Skip(1)];
-
-        Console.WriteLine($"Steps [{steps.Length}]:");
-
-        foreach (string step in steps)
-        {
-          Console.WriteLine(step);
-        }
-
-        if (context.Request.Url?.AbsolutePath == "/")
-        {
-          string response_string = "Hello root";
-          byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response_string);
-
-          context.Response.ContentLength64 = buffer.Length;
-          context.Response.OutputStream.Write(buffer, 0, buffer.Length);
-        }
-
-        if (context.Request.Url?.AbsolutePath == "/json")
-        {
-          string file_data = File.ReadAllText("./test_data.json");
-          file_data = Regex.Replace(file_data, @"\s+", " ");
-          byte[] buffer = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(file_data));
-
-          context.Response.ContentLength64 = buffer.Length;
-          context.Response.ContentType = "Application/Json";
-          context.Response.OutputStream.Write(buffer, 0, buffer.Length);
-        }
-
-        context.Response.Close();
       }
     }
   }

@@ -1,12 +1,5 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using MediaRatingsPlatform;
 
-namespace MediaRatingsPlatform
-{
-  class Program
-  {
-    static void Main()
-    {
-      Server _ = new();
-    }
-  }
-}
+Server server = new();
+
+await server.RunAsync();
